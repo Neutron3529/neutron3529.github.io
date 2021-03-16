@@ -14,8 +14,14 @@ Older version of MXNet prefetch data only after the `__iter__()` method is calle
 
 In MXNet 1.x.0 (x>=9) with `auto_reload=True`(not the default setting) or MXNet 2.x with `nopython` mode, the prefetch is done as expected.
 
+<div style="display:none">
+
+Hide these content until a really good paper is published.
+
 # What's more
 
 If you think my little contribution helps you, could you help me make the following chart more beautiful?
 
 [![My GitHub Data](https://github-readme-stats.vercel.app/api?username=Neutron3529)]()
+
+</div>
