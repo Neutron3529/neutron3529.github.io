@@ -4,7 +4,7 @@ I am Feiyue Xie, a student studying in University of Science and Technology of C
 
 # Contributions
 
-Since I found some issues in jmcm, Keras, MXNet, Gluon-CV, Jittor, and Rust, I learned to write PRs and become their contributer. Although most of the PRs are not huge change and most of them are easy-to-fix performance problem, there is something important change which is worth mention.
+Since I found some issues in keras, mxnet, gluon-cv, jittor, and rust, I learned to write PRs and become their contributer. Although most of the PRs are not huge change and most of them are easy-to-fix performance problem, there is something important change which is worth mention.
 
 ## Prefetch data.
 
