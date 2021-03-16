@@ -1,37 +1,21 @@
-## Welcome to GitHub Pages
+# Who am I
 
-You can use the [editor on GitHub](https://github.com/Neutron3529/neutron3529.github.io/edit/main/README.md) to maintain and preview the content for your website in Markdown files.
+I am Feiyue Xie, a student studying in University of Science and Technology of China, who uses github to practice programming techniques.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+# Contributions
 
-### Markdown
+Since I found some issues in jmcm, Keras, MXNet, Gluon-CV, Jittor, and Rust, I learned to write PRs and become their contributer. Although most of the PRs are not huge change and most of them are easy-to-fix performance problem, there is something important change which is worth mention.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+## Prefetch data.
 
-```markdown
-Syntax highlighted code block
+In old versions of MXNet (<=1.8.0, don't know whether it affects pytorch or tensorflow), execute `data_iter_prefetch=iter(data_iter)` after the `data_iter` is defined and `data_iter_prefetch` is consumed may speed up the calculation. without such execution may slow down the training process especially you're using some heavy image ppre-processing techniques like autoaugment in a small dataset (e.g., CIFAR-100).
 
-# Header 1
-## Header 2
-### Header 3
+Older version of MXNet prefetch data only after the `__iter__()` method is called.
 
-- Bulleted
-- List
+In MXNet 1.x.0 (x>=9) with `auto_reload=True`(not the default setting) or MXNet 2.x with `nopython` mode, the prefetch is done as expected.
 
-1. Numbered
-2. List
+# What's more
 
-**Bold** and _Italic_ and `Code` text
+If you think my little contribution helps you, could you help me make the following chart more beautiful?
 
-[Link](url) and ![Image](src)
-```
-
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/Neutron3529/neutron3529.github.io/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+[![My GitHub Data](https://github-readme-stats.vercel.app/api?username=Neutron3529)]()
