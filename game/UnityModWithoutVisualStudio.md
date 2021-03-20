@@ -4,7 +4,7 @@ As for install a exist mod, [BepInEx](https://github.com/BepInEx/BepInEx/release
 
 ## Before the tutorial
 
-You may surprise that I am a Chinese, but this tutorial is written in English -- Is there a Chinese version? Will a Chinese version be published soon?
+You may surprise that I am a Chinese, but this tutorial is writting in English -- Is there a Chinese version? Will a Chinese version be published soon?
 
 The answer is NO for both. The cost of saving several hours is a small overhead of brain consuming -- English here could be a good-enough filter for those who do not familiar with a foreign language. Since most of the modding tool's doc is written in English, using English will not prevent people who really want to write a mod from reading this tutorial.
 
