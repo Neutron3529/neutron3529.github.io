@@ -14,6 +14,11 @@ Older version of MXNet prefetch data only after the `__iter__()` method is calle
 
 In MXNet 1.x.0 (x>=9) with `auto_reload=True`(not the default setting) or MXNet 2.x with `nopython` mode, the prefetch is done as expected.
 
+# Funny things
+
+## [Add a new Github Page](./test "Actually the name of the new page is the path of the .md file plus the .md'file's primary name")
+## [Write a mod for Unity Game WITHOUT Visual Studio](./game/UnityModWithoutVisualStudio "This is the most beautiful solution for Linux AFAIK.")
+
 <div style="display:none">
 
 Hide these content until a really good paper is published.
