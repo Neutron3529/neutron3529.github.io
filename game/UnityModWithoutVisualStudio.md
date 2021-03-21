@@ -2,6 +2,8 @@
 
 As for install a exist mod, [BepInEx](https://github.com/BepInEx/BepInEx/releases "click to find the newest version of BepInEx") is a really good Unity Game modding tool. But AFAIK, there is no tutorial for people who want to write a mod without [Visual Studio](https://visualstudio.microsoft.com/downloads/ "It would waste several GB disk space and about half an hour to install it."). The Visual Studio, IMO, is very heavy and clumsy for modding, and I am willing to provide a beautiful way to solve such problem.
 
+> Found a [library](https://github.com/ghorsington/BepInEx.ScriptLoader) that compile scripts automatically, which could be another choice (may be better since that plugin works without sdk)
+
 ## Before the tutorial
 
 You may surprise that I am a Chinese, but this tutorial is writting in English -- Is there a Chinese version? Will a Chinese version be published soon?
