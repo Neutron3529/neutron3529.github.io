@@ -1,3 +1,5 @@
+# nginx本地反代github
+---
 # 0. 前言
 
 [在这里我就不重读法条了](https://hee.ink/2020/03/06/Nginx本地反向代理傻瓜教程/ "在干活之前，我们有必要了解一下法律条文，做一个学法懂法用法的好公民~ by某位介绍nginx反代的dalao")
@@ -16,7 +18,7 @@
 # 1. 准备工作
 ## 1.0 安装manjaro
 
-[manjaro是最好配置的linux](https://zhuanlan.zhihu.com/p/119340150 如果你想说ubuntu占有率高，请仔细看一下这里评论的时间跨度……)，不接受反驳。
+manjaro是最好配置的linux[*](https://zhuanlan.zhihu.com/p/119340150 "如果你想说ubuntu占有率高，请仔细看一下这里评论的时间跨度……")，不接受反驳。
 
 ## 1.1. 安装nginx与openssl
 
