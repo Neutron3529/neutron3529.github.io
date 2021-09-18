@@ -18,6 +18,7 @@ In MXNet 1.x.0 (x>=9) with `auto_reload=True`(not the default setting) or MXNet 
 
 ## [Add a new Github Page](./test "Actually the name of the new page is the path of the .md file plus the .md'file's primary name")
 ## [Write a mod for Unity Game WITHOUT Visual Studio](./game/UnityModWithoutVisualStudio "This is the most beautiful solution for Linux AFAIK.")
+## [speed up visit github by nginx (written in Chinese)](./nginx/README.md "本地反代，主要用途是绕过SNI攻击，全篇都是中文……因为看不懂中文的大概也不需要这个……")
 
 <div style="display:none">
 
