@@ -60,7 +60,7 @@ openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86
  -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
  -extfile <( cat << EOF
 [CUSTOM_STRING_LIKE_SAN_KU]
-subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org
+subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 EOF
 )
@@ -490,6 +490,25 @@ remote: Total 3265 (delta 77), reused 96 (delta 23), pack-reused 3054
 子模组路径 '3rdparty/tvm/3rdparty/vta-hw'：检出 '87ce9acfae550d1a487746e9d06c2e250076e54c'
 ```
 
+# 如果你想改证书的签名
+
+```
+# use root
+cp /etc/nginx/ca/* .
+openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86400 + 1` \
+ -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
+ -extfile <( cat << EOF
+[CUSTOM_STRING_LIKE_SAN_KU]
+subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+EOF
+)
+yes | cp nginx.conf /etc/nginx/ca/
+```
+
+
 # 这篇文章最早发在知乎，但知乎提示要修改
 
 那就改到github上好了。
+
+
