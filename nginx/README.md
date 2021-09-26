@@ -133,7 +133,6 @@ http {
 
     server {
         listen 443 ssl default_server;
-        listen 8443 ssl default_server;
 
         ssl_certificate ca/nginx.pem;
         ssl_certificate_key ca/nginx.key;
