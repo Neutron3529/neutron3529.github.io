@@ -16,6 +16,7 @@
 有朝一日中国人均GDP超过美国的时候（虽然可能并不是超过现在的美国人均水平……）
 我相信建墙的终究会变成墙对面的……
 
+# 1. 准备工作
 ## 1.0 安装manjaro
 
 manjaro是最好配置的linux[*](https://zhuanlan.zhihu.com/p/119340150 "如果你想说ubuntu占有率高，请仔细看一下这里评论的时间跨度……")，不接受反驳。
@@ -76,7 +77,7 @@ EOF
 # 上面这句没测试，也不是本讲的内容……
 ```
 
-## 1.3. 安装证书
+[1.3]: ## 1.3. 安装证书
 
 这是一件因系统而异的事情，在manjaro上，需要执行
 
@@ -94,7 +95,7 @@ Important：请不要相信网上说的“[firefox需要单独安装证书](http
 你只需要安装系统证书，系统自然会信任这个证书签发的一切。
 
 
-# 1. 准备工作
+# 2. 配置nginx
 ## 2.1. 修改配置
 
 这一节修改配置主要参考[dalao的repo](https://github.com/mashirozx/Pixiv-Nginx "Pixiv-Nginx")，根据linux哲学，让我们把conf文件拆成服务和服务器地址两个部分。
@@ -350,7 +351,6 @@ sudo systemctl start nginx # 仅限使用systemd的系统，比如manjaro
 sudo systemctl enable nginx
 ```
 
-# 2. 配置nginx
 # 3. 配置github ssh连接
 
 在本地github解析到`127.0.0.1`之后，我们理应发现，`git clone git@github.com`开头的命令会因以各种奇妙的姿势连接到自家电脑而失效，解法很简单，使用一个额外的端口映射将（比如12345端口）转发到github
@@ -367,6 +367,7 @@ Host github.com
 
 虽然这并不能改变我们正在访问的其实是`localhost:12345`（相应的记载会被留在known hosts里面），但origin是正常的，这就够了。
 
+# 4. 一些需要注意的问题
 ## 4.1. 小心server摸鱼
 
 这里的nginx不会在遇到`403`或者`502`之后更换server：如果你在反代的时候发现`图片无法加载`/`直接返回502/403`/`网站变得十分奇怪`之类的现象，你应该主动排查是否有一个摸鱼的server，并将其删除
@@ -375,8 +376,9 @@ Host github.com
 
 速度如下，比访问镜像网站快多了……
 
+请注意，如果你在[1.3][1.3节]的设置正确，你并不需要额外执行一句`export GIT_SSL_NO_VERIFY=true`
+
 ```
-$ export GIT_SSL_NO_VERIFY=true
 $ git clone https://github.com/apache/incubator-mxnet.git --recursive
 正克隆到 'incubator-mxnet'...
 remote: Enumerating objects: 131941, done.
@@ -538,7 +540,6 @@ remote: Total 3265 (delta 77), reused 96 (delta 23), pack-reused 3054
 子模组路径 '3rdparty/tvm/3rdparty/vta-hw'：检出 '87ce9acfae550d1a487746e9d06c2e250076e54c'
 ```
 
-# 4. 一些需要注意的问题
 # 如果你想改证书的签名
 
 ```
