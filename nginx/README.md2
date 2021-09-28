@@ -1,0 +1,512 @@
+# nginx本地反代github
+---
+
+# 0. 前言
+
+[在这里我就不重读法条了](https://hee.ink/2020/03/06/Nginx本地反向代理傻瓜教程/ "在干活之前，我们有必要了解一下法律条文，做一个学法懂法用法的好公民~ by某位介绍nginx反代的dalao")
+毕竟github只是访问缓慢且间歇性访问异常，不是一直访问不了。
+这里我们使用nginx做的一点点微小的工作只是……让连接稍微稳定了亿点点而已\[狗头\]
+
+每一个不正常的访问其他网址的方法都可能会失效。
+知道的人越多，失效速度就越快。
+这也是为什么我选择只写linux下操作方法的缘故（哪怕windows的操作跟linux几乎一致）。
+
+当然，我并不担心墙会不会越来越高
+毕竟我们正在一步步走向“文化自信”的康庄大道。
+有朝一日中国人均GDP超过美国的时候（虽然可能并不是超过现在的美国人均水平……）
+我相信建墙的终究会变成墙对面的……
+
+## 1.0 安装manjaro
+
+manjaro是最好配置的linux[*](https://zhuanlan.zhihu.com/p/119340150 "如果你想说ubuntu占有率高，请仔细看一下这里评论的时间跨度……")，不接受反驳。
+
+## 1.1. 安装nginx与openssl
+
+如你所见，manjaro并不是用来做nginx服务器的
+
+> 不然我也不会让你装了。我才不会说manjaro里面的steam真香呢……
+
+```
+sudo pacman -S nginx # openssl steam-manjaro # openssl是manjaro自带，不需要安装
+```
+
+别的系统……慢慢找吧
+
+## 1.2. 制作CA证书，与签名证书
+
+```
+### 制作CA证书，如果你没有CA证书的话，必须执行
+openssl genrsa 2048 > ca.key # 这是你的CA证书，你可以选择要不要信任CA证书
+
+### CA证书的公钥，用于信任CA证书，这样你就不必亲自信任每一个用这个CA签名的证书了
+export SUBJ="/C=CN/ST=ST$RANDOM/O=O$RANDOM/OU=OU$RANDOM/CN=CN$RANDOM/emailAddress=$RANDOM@localhost"
+# $SUB这一行的意思请稍后自行领悟,这里RANDOM的用意是，防止大家生成重复的CA然后产生未知问题
+# 如果不知道-subj是什么，不要改。CN写0CN是为了让证书好找（会排到最前面）
+openssl req -new -x509 -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86400 + 1` \
+  -key ca.key -out ca.pem -subj $SUBJ -extensions v3_ca
+# 上面这节其实是一整行命令（用\换行，于是显示成了两行）
+# 这里 `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86400 + 1` 是计算当前时间到yyyymmdd=99991231的日期
+# 整段内容的意思是，让这个证书的有效期到9999年12月31日
+# 我保证RSA失效日期一定比这个日期早……
+# 请不要学习这个把签名签到9999年的坏习惯，涉及网络活动的，最好每年换一个签名。
+# 这里签到9999年的原因是……谁闲着没事监听你的nginx拿到只有你用的证书之后会对你开展中间人攻击呢？
+
+### 生成nginx需要的证书
+openssl genrsa 1024 > nginx.key # 密钥
+openssl req -new -nodes -key nginx.key -out nginx.csr -subj $SUBJ
+
+### CA签名
+openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86400 + 1` \
+ -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
+ -extfile <( cat << EOF
+[CUSTOM_STRING_LIKE_SAN_KU]
+subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+EOF
+)
+
+# 这里，使用-extfile对配置文件做临时修改
+# 这样就完成了签名工作
+# 事实上，这里可以多写几个subjectAltName，比如subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com
+# 多写几个的好处就不说了，说多了可能犯法[狗头]
+
+# openssl x509 -noout -text -in nginx.pem
+# 如果你需要检查你生成的pem，或者
+# ( openssl x509 -noout -text -in nginx.pem && cat nginx.pem ) > nginx.crt
+# 上面这句没测试，也不是本讲的内容……
+```
+
+## 1.3. 安装证书
+
+这是一件因系统而异的事情，在manjaro上，需要执行
+
+```
+sudo cp ca.pem  /etc/ca-certificates/trust-source/anchors/
+sudo update-ca-trust
+sudo mkdir /etc/nginx/ca && sudo cp nginx.pem nginx.key /etc/nginx/ca
+```
+
+这样的指令。
+
+Important：请不要相信网上说的“[firefox需要单独安装证书](https://steampp.net/faq#CommunityAccelerate "仅限linux")”的故事。
+在linux下，firefox是认识系统证书的。
+
+你只需要安装系统证书，系统自然会信任这个证书签发的一切。
+
+
+# 1. 准备工作
+## 2.1. 修改配置
+
+这一节修改配置主要参考[dalao的repo](https://github.com/mashirozx/Pixiv-Nginx "Pixiv-Nginx")，根据linux哲学，让我们把conf文件拆成服务和服务器地址两个部分。
+
+首先，服务部分由`/etc/nginx/nginx.conf`设置，内容如下，基本无需更改
+
+```
+user  nobody;
+worker_processes 1;
+
+events {
+    worker_connections 1024;
+}
+
+
+http {
+    include mime.types;
+    default_type application/octet-stream;
+
+    #log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+    #                  '$status $body_bytes_sent "$http_referer" '
+    #                  '"$http_user_agent" "$http_x_forwarded_for"';
+
+    #access_log  logs/access.log  main;
+    sendfile on;
+    #tcp_nopush     on;
+
+    #keepalive_timeout  0;
+    keepalive_timeout 65;
+    client_max_body_size 100m;
+    server_names_hash_max_size 512;
+    server_names_hash_bucket_size 1024;
+
+    #gzip  on;
+
+    include hostmap.conf;
+
+    server {
+        listen 443 ssl default_server;
+
+        ssl_certificate ca/nginx.pem;
+        ssl_certificate_key ca/nginx.key;
+
+        allow 127.0.0.0/8;
+        deny all;
+        location / {
+            proxy_pass https://$default_http_host;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Real_IP $remote_addr;
+            proxy_set_header User-Agent $http_user_agent;
+            proxy_set_header Accept-Encoding '';
+            proxy_buffering off;
+        }
+    }
+}
+stream { # 这一行用于保证github的正常连接，关于这一点的额外设置，会在之后说明
+    upstream github {
+        server 140.82.112.3:22;
+        server 140.82.112.4:22;
+        server 140.82.113.3:22;
+        server 140.82.113.4:22;
+    }
+
+    server {
+        listen 12345;
+        proxy_pass github;
+        allow 127.0.0.0/8;
+        deny all; # 黑名单，保证我们的代理是“本地”代理
+    }
+}
+```
+接下来是关于服务器的设置，放在`/etc/nginx/hostmap.conf`文件里
+```
+upstream wikipedia-upload-lb {
+    server 208.80.153.240:443;
+    server 208.80.154.240:443;
+    server 91.198.174.208:443;
+    server 103.102.166.240:443;
+}
+
+upstream wikipedia-text-lb {
+    server 208.80.153.224:443;
+    server 91.198.174.192:443;
+}
+
+upstream www-pixiv-net {
+    server 210.140.131.182:443;
+    server 210.140.131.180:443;
+    server 210.140.131.184:443;
+}
+
+upstream sketch-pixiv-net {
+    server 210.140.174.37:443;
+    server 210.140.170.179:443;
+    server 210.140.175.130:443;
+}
+
+upstream imgaz-pixiv-net {
+    server 210.140.131.145:443;
+    server 210.140.131.144:443;
+    server 210.140.131.147:443;
+    server 210.140.131.153:443;
+}
+
+upstream i-pximg-net {
+    server 210.140.92.140:443;
+    server 210.140.92.137:443;
+    server 210.140.92.139:443;
+    server 210.140.92.142:443;
+    server 210.140.92.134:443;
+    server 210.140.92.141:443;
+    server 210.140.92.143:443;
+    server 210.140.92.135:443;
+    server 210.140.92.136:443;
+}
+
+upstream steamcommunity-com {
+    server 104.101.153.239:443;
+    server 104.85.204.121:443;
+    server 104.23.125.189:443;
+}
+
+upstream github-com {
+    server 140.82.112.3:443;
+    server 140.82.112.4:443;
+    server 140.82.113.3:443;
+    server 140.82.113.4:443;
+}
+
+upstream githubusercontent-com {
+    server 185.199.108.133:443;
+    server 185.199.109.133:443;
+    server 185.199.110.133:443;
+    server 185.199.111.133:443;
+}
+
+upstream unreachable {
+    server 255.255.255.255:443;
+}
+upstream discord-com {
+    server 162.159.128.233:443;
+    server 162.159.135.232:443;
+    server 162.159.136.232:443;
+    server 162.159.137.232:443;
+    server 162.159.138.232:443;
+}
+upstream cdn-discord-com {
+    server 162.159.129.233:443;
+    server 162.159.130.233:443;
+    server 162.159.133.233:443;
+    server 162.159.134.233:443;
+}
+upstream v2ex-com{
+    server 104.20.10.218:443;
+    server 104.20.9.218:443;
+    server 172.67.3.188:443;
+}
+map $host $default_http_host {
+    hostnames;
+    default                     unreachable;
+    .cdn.discord.com            cdn-discord-com;
+    .cdn.discord.net            cdn-discord-com;
+    .cdn.discordapp.com         cdn-discord-com;
+    .cdn.discordapp.net         cdn-discord-com;
+    #.media.discordapp.com       103.224.182.253;#cdn-discord-com;
+    #.media.discordapp.net       103.224.182.253;#cdn-discord-com;
+    .discord.com                discord-com;
+    .discord.net                discord-com;
+    .discordapp.com             discord-com;
+    .discordapp.net             discord-com;
+    .discord.gg                 discord-com;
+    .v2ex.com                   v2ex-com;
+    .github.com                 github-com;
+    .githubusercontent.com      githubusercontent-com;
+    .steamcommunity.com         steamcommunity-com;
+    .pixiv.net                  www-pixiv-net;
+    i.pximg.net                 i-pximg-net;
+    .wikipedia.org              wikipedia-text-lb;
+    .wikimedia.org              wikipedia-upload-lb;
+}
+```
+这里`map`可以看成是目录，而`upstream`是服务器对应地址
+
+理论上这个文件应该有一级额外的缩进，但我不想写，就这样也不错。
+
+## 2.2. 测试nginx是否正常[*](https://steampp.net/ "这些域名都是dalao收集的，我只是从程序里把hosts解压了出来而已……大家不妨猜猜看dalao的程序是干什么的：）")
+
+这一步需要我们把hosts解析到本地，也就是修改/etc/hosts
+```
+127.0.0.1  localhost raw.github.com githubusercontent.com cloud.githubusercontent.com camo.githubusercontent.com gist.github.com github.com raw.githubusercontent.com user-images.githubusercontent.com avatars3.githubusercontent.com avatars2.githubusercontent.com avatars1.githubusercontent.com avatars0.githubusercontent.com avatars.githubusercontent.com
+```
+把这一行加入`/etc/hosts`，或者替换`/etc/hosts`的第二行，都可以
+
+之后以管理员权限执行
+```
+sudo systemctl start nginx # 仅限使用systemd的系统，比如manjaro
+```
+然后就可以访问github，看看自己有没有拿到一个9999年12月31日过期的证书了。
+
+
+## 2.3. 开机启动nginx反代
+
+```
+sudo systemctl enable nginx
+```
+
+# 2. 配置nginx
+# 3. 配置github ssh连接
+
+在本地github解析到`127.0.0.1`之后，我们理应发现，`git clone git@github.com`开头的命令会因以各种奇妙的姿势连接到自家电脑而失效，解法很简单，使用一个额外的端口映射将（比如12345端口）转发到github
+
+nginx的配置见前文所述
+
+之后为了方便，我们可以修改`~/.ssh/config`，在其中增加一段
+
+```
+Host github.com
+    Port 12345
+    HostName %h
+```
+
+虽然这并不能改变我们正在访问的其实是`localhost:12345`（相应的记载会被留在known hosts里面），但origin是正常的，这就够了。
+
+## 4.1. 小心server摸鱼
+
+这里的nginx不会在遇到`403`或者`502`之后更换server：如果你在反代的时候发现`图片无法加载`/`直接返回502/403`/`网站变得十分奇怪`之类的现象，你应该主动排查是否有一个摸鱼的server，并将其删除
+
+## 4.2. 如果不准备执行git push，请务必使用https协议
+
+速度如下，比访问镜像网站快多了……
+
+```
+$ export GIT_SSL_NO_VERIFY=true
+$ git clone https://github.com/apache/incubator-mxnet.git --recursive
+正克隆到 'incubator-mxnet'...
+remote: Enumerating objects: 131941, done.
+remote: Counting objects: 100% (3230/3230), done.
+remote: Compressing objects: 100% (1876/1876), done.
+remote: Total 131941 (delta 1813), reused 2243 (delta 1329), pack-reused 128711
+接收对象中: 100% (131941/131941), 93.97 MiB | 9.53 MiB/s, 完成.
+处理 delta 中: 100% (91871/91871), 完成.
+子模组 '3rdparty/dlpack'（https://github.com/dmlc/dlpack）已对路径 '3rdparty/dlpack' 注册
+子模组 '3rdparty/dmlc-core'（https://github.com/dmlc/dmlc-core.git）已对路径 '3rdparty/dmlc-core' 注册
+子模组 '3rdparty/googletest'（https://github.com/google/googletest.git）已对路径 '3rdparty/googletest' 注册
+子模组 '3rdparty/intgemm'（https://github.com/kpu/intgemm）已对路径 '3rdparty/intgemm' 注册
+子模组 '3rdparty/nvidia_cub'（https://github.com/NVlabs/cub.git）已对路径 '3rdparty/nvidia_cub' 注册
+子模组 '3rdparty/onednn'（https://github.com/oneapi-src/oneDNN）已对路径 '3rdparty/onednn' 注册
+子模组 '3rdparty/onnx-tensorrt'（https://github.com/onnx/onnx-tensorrt.git）已对路径 '3rdparty/onnx-tensorrt' 注册
+子模组 '3rdparty/ps-lite'（https://github.com/dmlc/ps-lite）已对路径 '3rdparty/ps-lite' 注册
+子模组 '3rdparty/tvm'（https://github.com/apache/incubator-tvm.git）已对路径 '3rdparty/tvm' 注册
+正克隆到 '/me/incubator-mxnet/3rdparty/dlpack'...
+remote: Enumerating objects: 254, done.
+remote: Counting objects: 100% (92/92), done.
+remote: Compressing objects: 100% (49/49), done.
+remote: Total 254 (delta 29), reused 45 (delta 14), pack-reused 162
+接收对象中: 100% (254/254), 103.91 KiB | 185.00 KiB/s, 完成.
+处理 delta 中: 100% (85/85), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/dmlc-core'...
+remote: Enumerating objects: 6202, done.
+remote: Counting objects: 100% (66/66), done.
+remote: Compressing objects: 100% (46/46), done.
+remote: Total 6202 (delta 21), reused 32 (delta 9), pack-reused 6136
+接收对象中: 100% (6202/6202), 1.63 MiB | 399.00 KiB/s, 完成.
+处理 delta 中: 100% (3767/3767), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/googletest'...
+remote: Enumerating objects: 23162, done.
+remote: Counting objects: 100% (68/68), done.
+remote: Compressing objects: 100% (52/52), done.
+remote: Total 23162 (delta 24), reused 35 (delta 15), pack-reused 23094
+接收对象中: 100% (23162/23162), 9.15 MiB | 807.00 KiB/s, 完成.
+处理 delta 中: 100% (17091/17091), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/intgemm'...
+remote: Enumerating objects: 4188, done.
+remote: Counting objects: 100% (133/133), done.
+remote: Compressing objects: 100% (87/87), done.
+remote: Total 4188 (delta 76), reused 80 (delta 40), pack-reused 4055
+接收对象中: 100% (4188/4188), 1.11 MiB | 852.00 KiB/s, 完成.
+处理 delta 中: 100% (3014/3014), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/nvidia_cub'...
+remote: Enumerating objects: 34514, done.
+remote: Counting objects: 100% (783/783), done.
+remote: Compressing objects: 100% (360/360), done.
+remote: Total 34514 (delta 507), reused 594 (delta 421), pack-reused 33731
+接收对象中: 100% (34514/34514), 17.55 MiB | 1.31 MiB/s, 完成.
+处理 delta 中: 100% (29876/29876), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/onednn'...
+remote: Enumerating objects: 124205, done.
+remote: Counting objects: 100% (208/208), done.
+remote: Compressing objects: 100% (87/87), done.
+remote: Total 124205 (delta 121), reused 194 (delta 120), pack-reused 123997
+接收对象中: 100% (124205/124205), 110.58 MiB | 3.67 MiB/s, 完成.
+处理 delta 中: 100% (100498/100498), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/onnx-tensorrt'...
+remote: Enumerating objects: 1389, done.
+remote: Counting objects: 100% (255/255), done.
+remote: Compressing objects: 100% (168/168), done.
+remote: Total 1389 (delta 136), reused 125 (delta 85), pack-reused 1134
+接收对象中: 100% (1389/1389), 2.00 MiB | 1.26 MiB/s, 完成.
+处理 delta 中: 100% (917/917), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/ps-lite'...
+remote: Enumerating objects: 2951, done.
+remote: Total 2951 (delta 0), reused 0 (delta 0), pack-reused 2951
+接收对象中: 100% (2951/2951), 925.59 KiB | 584.00 KiB/s, 完成.
+处理 delta 中: 100% (1936/1936), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/tvm'...
+remote: Enumerating objects: 116007, done.
+remote: Counting objects: 100% (3062/3062), done.
+remote: Compressing objects: 100% (1449/1449), done.
+remote: Total 116007 (delta 1826), reused 2357 (delta 1531), pack-reused 112945
+接收对象中: 100% (116007/116007), 47.83 MiB | 7.58 MiB/s, 完成.
+处理 delta 中: 100% (85742/85742), 完成.
+子模组路径 '3rdparty/dlpack'：检出 '3efc489b55385936531a06ff83425b719387ec63'
+子模组路径 '3rdparty/dmlc-core'：检出 '5df8305fe699d3b503d10c60a231ab0223142407'
+子模组路径 '3rdparty/googletest'：检出 'eb9225ce361affe561592e0912320b9db84985d0'
+子模组路径 '3rdparty/intgemm'：检出 '8f28282c3bd854922da638024d2659be52e892e9'
+子模组路径 '3rdparty/nvidia_cub'：检出 '0158fa19f28619886232defd412433974af89611'
+子模组路径 '3rdparty/onednn'：检出 'e2d45252ae9c3e91671339579e3c0f0061f81d49'
+子模组路径 '3rdparty/onnx-tensorrt'：检出 '2eb74d933f89e1590fdbfc64971a36e5f72df720'
+子模组 'third_party/onnx'（https://github.com/onnx/onnx.git）已对路径 '3rdparty/onnx-tensorrt/third_party/onnx' 注册
+正克隆到 '/me/incubator-mxnet/3rdparty/onnx-tensorrt/third_party/onnx'...
+remote: Enumerating objects: 28660, done.
+remote: Counting objects: 100% (504/504), done.
+remote: Compressing objects: 100% (348/348), done.
+remote: Total 28660 (delta 255), reused 314 (delta 145), pack-reused 28156
+接收对象中: 100% (28660/28660), 20.61 MiB | 6.31 MiB/s, 完成.
+处理 delta 中: 100% (15874/15874), 完成.
+子模组路径 '3rdparty/onnx-tensorrt/third_party/onnx'：检出 '553df22c67bee5f0fe6599cff60f1afc6748c635'
+子模组 'third_party/benchmark'（https://github.com/google/benchmark.git）已对路径 '3rdparty/onnx-tensorrt/third_party/onnx/third_party/benchmark' 注册
+子模组 'third_party/pybind11'（https://github.com/pybind/pybind11.git）已对路径 '3rdparty/onnx-tensorrt/third_party/onnx/third_party/pybind11' 注册
+正克隆到 '/me/incubator-mxnet/3rdparty/onnx-tensorrt/third_party/onnx/third_party/benchmark'...
+remote: Enumerating objects: 6545, done.
+remote: Counting objects: 100% (801/801), done.
+remote: Compressing objects: 100% (438/438), done.
+remote: Total 6545 (delta 459), reused 575 (delta 319), pack-reused 5744
+接收对象中: 100% (6545/6545), 2.22 MiB | 1.41 MiB/s, 完成.
+处理 delta 中: 100% (4228/4228), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/onnx-tensorrt/third_party/onnx/third_party/pybind11'...
+remote: Enumerating objects: 17341, done.
+remote: Counting objects: 100% (605/605), done.
+remote: Compressing objects: 100% (333/333), done.
+remote: Total 17341 (delta 311), reused 421 (delta 225), pack-reused 16736
+接收对象中: 100% (17341/17341), 7.12 MiB | 3.27 MiB/s, 完成.
+处理 delta 中: 100% (11773/11773), 完成.
+子模组路径 '3rdparty/onnx-tensorrt/third_party/onnx/third_party/benchmark'：检出 'e776aa0275e293707b6a0901e0e8d8a8a3679508'
+子模组路径 '3rdparty/onnx-tensorrt/third_party/onnx/third_party/pybind11'：检出 '09f082940113661256310e3f4811aa7261a9fa05'
+子模组 'tools/clang'（https://github.com/wjakob/clang-cindex-python3）已对路径 '3rdparty/onnx-tensorrt/third_party/onnx/third_party/pybind11/tools/clang' 注册
+正克隆到 '/me/incubator-mxnet/3rdparty/onnx-tensorrt/third_party/onnx/third_party/pybind11/tools/clang'...
+remote: Enumerating objects: 368, done.
+remote: Counting objects: 100% (13/13), done.
+remote: Compressing objects: 100% (12/12), done.
+remote: Total 368 (delta 3), reused 6 (delta 1), pack-reused 355
+接收对象中: 100% (368/368), 159.34 KiB | 285.00 KiB/s, 完成.
+处理 delta 中: 100% (154/154), 完成.
+子模组路径 '3rdparty/onnx-tensorrt/third_party/onnx/third_party/pybind11/tools/clang'：检出 '6a00cbc4a9b8e68b71caf7f774b3f9c753ae84d5'
+子模组路径 '3rdparty/ps-lite'：检出 '34fd45cae457d59850fdcb2066467778d0673f21'
+子模组路径 '3rdparty/tvm'：检出 'efdac9439506d1de5eec91ecc795982c78e41909'
+子模组 'dlpack'（https://github.com/dmlc/dlpack）已对路径 '3rdparty/tvm/3rdparty/dlpack' 注册
+子模组 'dmlc-core'（https://github.com/dmlc/dmlc-core）已对路径 '3rdparty/tvm/3rdparty/dmlc-core' 注册
+子模组 '3rdparty/rang'（https://github.com/agauniyal/rang）已对路径 '3rdparty/tvm/3rdparty/rang' 注册
+子模组 '3rdparty/vta-hw'（https://github.com/apache/incubator-tvm-vta）已对路径 '3rdparty/tvm/3rdparty/vta-hw' 注册
+正克隆到 '/me/incubator-mxnet/3rdparty/tvm/3rdparty/dlpack'...
+remote: Enumerating objects: 254, done.
+remote: Counting objects: 100% (92/92), done.
+remote: Compressing objects: 100% (49/49), done.
+remote: Total 254 (delta 29), reused 45 (delta 14), pack-reused 162
+接收对象中: 100% (254/254), 103.91 KiB | 186.00 KiB/s, 完成.
+处理 delta 中: 100% (85/85), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/tvm/3rdparty/dmlc-core'...
+remote: Enumerating objects: 6202, done.
+remote: Counting objects: 100% (66/66), done.
+remote: Compressing objects: 100% (46/46), done.
+remote: Total 6202 (delta 21), reused 32 (delta 9), pack-reused 6136
+接收对象中: 100% (6202/6202), 1.63 MiB | 1.17 MiB/s, 完成.
+处理 delta 中: 100% (3767/3767), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/tvm/3rdparty/rang'...
+remote: Enumerating objects: 731, done.
+remote: Counting objects: 100% (27/27), done.
+remote: Compressing objects: 100% (23/23), done.
+remote: Total 731 (delta 7), reused 15 (delta 3), pack-reused 704
+接收对象中: 100% (731/731), 264.09 KiB | 244.00 KiB/s, 完成.
+处理 delta 中: 100% (369/369), 完成.
+正克隆到 '/me/incubator-mxnet/3rdparty/tvm/3rdparty/vta-hw'...
+remote: Enumerating objects: 3265, done.
+remote: Counting objects: 100% (211/211), done.
+remote: Compressing objects: 100% (172/172), done.
+remote: Total 3265 (delta 77), reused 96 (delta 23), pack-reused 3054
+接收对象中: 100% (3265/3265), 1.52 MiB | 1.12 MiB/s, 完成.
+处理 delta 中: 100% (1329/1329), 完成.
+子模组路径 '3rdparty/tvm/3rdparty/dlpack'：检出 '3ec04430e89a6834e5a1b99471f415fa939bf642'
+子模组路径 '3rdparty/tvm/3rdparty/dmlc-core'：检出 '6c401e242c59a1f4c913918246591bb13fd714e7'
+子模组路径 '3rdparty/tvm/3rdparty/rang'：检出 'cabe04d6d6b05356fa8f9741704924788f0dd762'
+子模组路径 '3rdparty/tvm/3rdparty/vta-hw'：检出 '87ce9acfae550d1a487746e9d06c2e250076e54c'
+```
+
+# 4. 一些需要注意的问题
+# 如果你想改证书的签名
+
+```
+# use root
+cp /etc/nginx/ca/* .
+openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86400 + 1` \
+ -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
+ -extfile <( cat << EOF
+[CUSTOM_STRING_LIKE_SAN_KU]
+subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+EOF
+)
+yes | cp nginx.conf /etc/nginx/ca/
+```
+# 这篇文章最早发在知乎，但知乎提示要修改
+
+那就改到github上好了。
+

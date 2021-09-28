@@ -1,0 +1,7 @@
+## 2.1. 修改配置
+
+这一节修改配置主要参考[dalao的repo](https://github.com/mashirozx/Pixiv-Nginx "Pixiv-Nginx")，根据linux哲学，让我们把conf文件拆成服务和服务器地址两个部分。
+
+首先，服务部分由`/etc/nginx/nginx.conf`设置，内容如下，基本无需更改
+
+```
