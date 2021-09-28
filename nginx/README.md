@@ -77,7 +77,8 @@ EOF
 # 上面这句没测试，也不是本讲的内容……
 ```
 
-[1.3]: ## 1.3. 安装证书
+## 1.3. 安装证书
+[1.3]: #安装证书
 
 这是一件因系统而异的事情，在manjaro上，需要执行
 
@@ -376,7 +377,7 @@ Host github.com
 
 速度如下，比访问镜像网站快多了……
 
-请注意，如果你在[1.3][1.3节]的设置正确，你并不需要额外执行一句`export GIT_SSL_NO_VERIFY=true`
+请注意，如果你在[1.3节](#1.3)的设置正确，你并不需要额外执行一句`export GIT_SSL_NO_VERIFY=true`
 
 ```
 $ git clone https://github.com/apache/incubator-mxnet.git --recursive
