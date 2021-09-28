@@ -82,7 +82,7 @@ EOF
 这是一件因系统而异的事情，在manjaro上，需要执行
 
 ```
-sudo cp ca.pem  /etc/ca-certificates/trust-source/anchors/
+sudo cp ca.pem nginx.pem /etc/ca-certificates/trust-source/anchors/
 sudo update-ca-trust
 sudo mkdir /etc/nginx/ca && sudo cp nginx.pem nginx.key /etc/nginx/ca
 ```
