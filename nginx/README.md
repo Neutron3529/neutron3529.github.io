@@ -554,7 +554,7 @@ subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DN
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 EOF
 )
-yes | cp nginx.pem /etc/nginx/ca/
+( yes | cp nginx.pem /etc/ca-certificates/trust-source/anchors/ ) && update-ca-trust && ( yes | cp nginx.pem /etc/nginx/ca/ )
 ```
 # 这篇文章最早发在知乎，但知乎提示要修改
 
