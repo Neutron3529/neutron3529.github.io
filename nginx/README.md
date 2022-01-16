@@ -182,15 +182,49 @@ stream {
 接下来是关于服务器的设置，放在`/etc/nginx/hostmap.conf`文件里
 ```
 upstream wikipedia-upload-lb {
-    server 208.80.153.240:443;
-    server 208.80.154.240:443;
+#    server 208.80.153.240:443;
+#    server 208.80.154.224:443;
+#    server 208.80.154.240:443;
+#    server 91.198.174.208:443;
+#    server 103.102.166.224:443;
+#    server 198.35.26.112:443;
     server 91.198.174.208:443;
-    server 103.102.166.240:443;
+}
+upstream wikimedia-org {
+    server 91.198.174.192:443;
 }
 
 upstream wikipedia-text-lb {
     server 208.80.153.224:443;
     server 91.198.174.192:443;
+}
+
+upstream reddit-com {
+#    server 151.101.1.140:443;
+#    server 151.101.65.140:443;
+#    server 151.101.77.140:443;
+    server 146.75.49.140:443;
+#    server 199.232.45.140:443;
+}
+
+upstream thumbs-redditmedia-com {
+#    server 151.101.77.140:443;
+#    server 151.101.109.140:443;
+    server 199.232.45.140:443;
+}
+
+upstream v-redd-it {
+#    server 151.101.77.140:443;
+#    server 151.101.109.140:443;
+    server 199.232.45.140:443;
+}
+
+upstream styles-redditmedia-com {
+    server 146.75.49.140:443;
+}
+
+upstream redditmedia-com {
+    server 199.232.45.140:443;
 }
 
 upstream www-pixiv-net {
@@ -225,9 +259,13 @@ upstream i-pximg-net {
 }
 
 upstream steamcommunity-com {
-    server 104.101.153.239:443;
-    server 104.85.204.121:443;
-#    server 104.23.125.189:443;
+    server 127.0.0.1:943; # for modified ascf
+#    server 104.101.153.239:443;
+#    server 104.85.204.121:443;
+##    server 104.23.125.189:443;
+}
+upstream store-steampowered-com{
+    server 23.206.253.62:443;
 }
 
 upstream github-com {
@@ -268,6 +306,10 @@ upstream v2ex-com{
 map $host $default_http_host {
     hostnames;
     default                     unreachable;
+    .redd.it                    v-redd-it;
+    .reddit.com                 reddit-com;
+    .thumbs.redditmedia.com     thumbs-redditmedia-com;
+    .redditmedia.com            redditmedia-com;
     .cdn.discord.com            cdn-discord-com;
     .cdn.discord.net            cdn-discord-com;
     .cdn.discordapp.com         cdn-discord-com;
@@ -286,16 +328,18 @@ map $host $default_http_host {
     .v2ex.com                   v2ex-com;
     .github.com                 github-com;
     .githubusercontent.com      githubusercontent-com;
+    store.steampowered.com      store-steampowered-com;
     .steamcommunity.com         steamcommunity-com;
     .pixiv.net                  www-pixiv-net;
     i.pximg.net                 i-pximg-net;
     .wikipedia.org              wikipedia-text-lb;
-    .wikimedia.org              wikipedia-upload-lb;
+    upload.wikimedia.org        wikipedia-upload-lb;
+    wikimedia.org               wikimedia-org;
     .wikiversity.org            wikipedia-text-lb;
     .archive.org                207.241.237.3;
-    ajax.googleapis.com         ajax.lug.ustc.edu.cn;
-    fonts.googleapis.com        fonts.lug.ustc.edu.cn;
-    themes.googleusercontent.com google-themes.lug.ustc.edu.cn;
+    ajax.googleapis.com         ajax.loli.net;#ajax.lug.ustc.edu.cn;
+    fonts.googleapis.com        fonts.loli.net;#fonts.lug.ustc.edu.cn;
+    themes.googleusercontent.com themes.loli.net;#google-themes.lug.ustc.edu.cn;
     vimeo.com                   151.101.0.217;
 }
 server {
@@ -324,6 +368,16 @@ server {
         proxy_set_header User-Agent $http_user_agent;
         proxy_set_header Accept-Encoding '';
         proxy_buffering off;
+    }
+}
+server {
+    listen 443 ssl;
+    include certificate.conf;
+    server_name localhost;
+    allow 127.0.0.0/8;
+    deny all;
+    location / {
+        root /me/;
     }
 }
 ```
@@ -550,7 +604,7 @@ openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86
  -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
  -extfile <( cat << EOF
 [CUSTOM_STRING_LIKE_SAN_KU]
-subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com, DNS:githack.com, DNS:*.githack.com, DNS:*.reddit.com, DNS:reddit.com
+subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com, DNS:githack.com, DNS:*.githack.com, DNS:*.reddit.com, DNS:reddit.com, DNS:*.redditmedia.com, DNS:redditmedia.com, DNS:*.thumbs.redditmedia.com, DNS:thumbs.redditmedia.com, DNS:*.redd.it, DNS:redd.it
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 EOF
 )
