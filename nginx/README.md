@@ -61,14 +61,14 @@ openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86
  -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
  -extfile <( cat << EOF
 [CUSTOM_STRING_LIKE_SAN_KU]
-subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com
+subjectAltName=IP:127.0.0.1, IP: ::1, DNS:localhost, DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com, DNS:githack.com, DNS:*.githack.com, DNS:reddit.com, DNS:*.reddit.com, DNS:redditmedia.com, DNS:*.redditmedia.com, DNS:thumbs.redditmedia.com, DNS:*.thumbs.redditmedia.com, DNS:redd.it, DNS:*.redd.it, DNS:jsdelivr.net, DNS:*.jsdelivr.net
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 EOF
 )
 
 # 这里，使用-extfile对配置文件做临时修改
 # 这样就完成了签名工作
-# 事实上，这里可以多写几个subjectAltName，比如subjectAltName=IP:127.0.0.1, IP: ::1 ,DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com
+# 事实上，这里可以多写几个subjectAltName
 # 多写几个的好处就不说了，说多了可能犯法[狗头]
 
 # openssl x509 -noout -text -in nginx.pem
@@ -261,18 +261,20 @@ upstream i-pximg-net {
 upstream steamcommunity-com {
     server 127.0.0.1:943; # for modified ascf
 #    server 104.101.153.239:443;
-#    server 104.85.204.121:443;
+#    server 104.85.204.121:443; // works
 ##    server 104.23.125.189:443;
 }
 upstream store-steampowered-com{
-    server 23.206.253.62:443;
+    #server 23.206.253.62:443;
+    #server 23.42.182.65:443;
+    server 23.2.3.88:443; # 日本东京 Akamai
 }
 
 upstream github-com {
-    server 140.82.112.3:443;
-    server 140.82.112.4:443;
+#    server 140.82.112.3:443;
+#    server 140.82.112.4:443;
     server 140.82.113.3:443;
-    server 140.82.113.4:443;
+#    server 140.82.113.4:443;
 }
 
 upstream githubusercontent-com {
@@ -322,8 +324,8 @@ map $host $default_http_host {
 #    .media.discordapp.net       cdn-discord-com;
     .discord.com                discord-com;
     .discord.net                discord-com;
-    .discordapp.com             discord-com;
-    .discordapp.net             discord-com;
+    .discordapp.com             cdn-discord-com;
+    .discordapp.net             cdn-discord-com;
     .discord.gg                 discord-com;
     .v2ex.com                   v2ex-com;
     .github.com                 github-com;
@@ -341,6 +343,7 @@ map $host $default_http_host {
     fonts.googleapis.com        fonts.loli.net;#fonts.lug.ustc.edu.cn;
     themes.googleusercontent.com themes.loli.net;#google-themes.lug.ustc.edu.cn;
     vimeo.com                   151.101.0.217;
+    cdn.jsdelivr.net            151.101.73.229;
 }
 server {
     listen 443 ssl;
@@ -370,16 +373,7 @@ server {
         proxy_buffering off;
     }
 }
-server {
-    listen 443 ssl;
-    include certificate.conf;
-    server_name localhost;
-    allow 127.0.0.0/8;
-    deny all;
-    location / {
-        root /me/;
-    }
-}
+
 ```
 这里`map`可以看成是目录，而`upstream`是服务器对应地址
 
