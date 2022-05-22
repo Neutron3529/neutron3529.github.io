@@ -61,7 +61,7 @@ openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86
  -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
  -extfile <( cat << EOF
 [CUSTOM_STRING_LIKE_SAN_KU]
-subjectAltName=IP:127.0.0.1, IP: ::1, DNS:localhost, DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com, DNS:githack.com, DNS:*.githack.com, DNS:reddit.com, DNS:*.reddit.com, DNS:redditmedia.com, DNS:*.redditmedia.com, DNS:thumbs.redditmedia.com, DNS:*.thumbs.redditmedia.com, DNS:redd.it, DNS:*.redd.it, DNS:jsdelivr.net, DNS:*.jsdelivr.net
+subjectAltName=IP:127.0.0.1, IP: ::1, DNS:localhost, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 EOF
 )
@@ -76,7 +76,6 @@ EOF
 # ( openssl x509 -noout -text -in nginx.pem && cat nginx.pem ) > nginx.crt
 # 上面这句没测试，也不是本讲的内容……
 ```
-
 ## 1.3. 安装证书
 [1.3]: #安装证书
 
@@ -94,7 +93,29 @@ Important：请不要相信网上说的“[firefox需要单独安装证书](http
 在linux下，firefox是认识系统证书的。
 
 你只需要安装系统证书，系统自然会信任这个证书签发的一切。
+## 1.4. 重新签名证书
+[1.4]: #重新签名证书
 
+按上面的做法，做出的证书可能漏签了不少重要域名，比如我发现这几天贴吧访问有问题，想把贴吧加入反代名单……
+此时可以简单地，只完成签名部分：
+
+```
+# 使用root权限运行，因为私钥的权限很少，理应只允许root访问。
+cp /etc/nginx/ca/* .
+openssl x509 -noout -text -in nginx.pem # 可以用这一条命令查看当前签名的nginx.pem包含的IP和域名，方便接下来的修改
+openssl x509 -req -days `expr \( \`date -d 99991231 +%s\` - \`date +%s\` \) / 86400 + 1` \
+ -in nginx.csr -out nginx.pem -CA ca.pem -CAkey ca.key -set_serial 0 -extensions CUSTOM_STRING_LIKE_SAN_KU\
+ -extfile <( cat << EOF
+[CUSTOM_STRING_LIKE_SAN_KU]
+subjectAltName=IP:127.0.0.1, IP: ::1, DNS:localhost, DNS:ads-pixiv.net, DNS:*.ads-pixiv.net, DNS:akamaihd.net, DNS:*.akamaihd.net, DNS:arkoselabs.com, DNS:*.arkoselabs.com, DNS:artstation.com, DNS:*.artstation.com, DNS:discordapp.com, DNS:*.discordapp.com, DNS:discordapp.net, DNS:*.discordapp.net, DNS:discord.com, DNS:*.discord.com, DNS:ext-twitch.tv, DNS:*.ext-twitch.tv, DNS:github.com, DNS:*.github.com, DNS:githubusercontent.com, DNS:*.githubusercontent.com, DNS:google.com, DNS:*.google.com, DNS:hcaptcha.com, DNS:*.hcaptcha.com, DNS:pinimg.com, DNS:*.pinimg.com, DNS:pinterest.com, DNS:*.pinterest.com, DNS:pixiv.net, DNS:*.pixiv.net, DNS:pixivsketch.net, DNS:*.pixivsketch.net, DNS:pximg.net, DNS:*.pximg.net, DNS:steam-chat.com, DNS:*.steam-chat.com, DNS:steamcommunity.com, DNS:*.steamcommunity.com, DNS:steampowered.com, DNS:*.steampowered.com, DNS:steamstatic.com, DNS:*.steamstatic.com, DNS:twitch.tv, DNS:*.twitch.tv, DNS:ubi.com, DNS:*.ubi.com, DNS:v2ex.com, DNS:*.v2ex.com, DNS:wikipedia.org, DNS:*.wikipedia.org, DNS:*.m.wikipedia.org, DNS:wikinews.org, DNS:*.wikinews.org, DNS:wikimedia.org, DNS:*.wikimedia.org, DNS:wikiversity.org, DNS:*.wikiversity.org, DNS:googleapis.com, DNS:*.googleapis.com, DNS:googleusercontent.com, DNS:*.googleusercontent.com, DNS:githack.com, DNS:*.githack.com, DNS:reddit.com, DNS:*.reddit.com, DNS:redditmedia.com, DNS:*.redditmedia.com, DNS:thumbs.redditmedia.com, DNS:*.thumbs.redditmedia.com, DNS:redd.it, DNS:*.redd.it, DNS:jsdelivr.net, DNS:*.jsdelivr.net, DNS:baidu.com, DNS:*.baidu.com
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+EOF
+)
+cp nginx.pem /etc/ca-certificates/trust-source/anchors/ && update-ca-trust && cp nginx.pem /etc/nginx/ca
+```
+
+firefox可能会因为重复的set_serial编号，将新签的证书认为是不安全的（自己签的证书，能安全就见鬼了……）
+此时可以删除firefox用户目录下的cert9.db，让firefox忘掉老证书
 
 # 2. 配置nginx
 ## 2.1. 修改配置
